@@ -11,7 +11,7 @@ import (
 )
 
 func encrypt(plaintext, Yek, Ecnon []byte, c context.Context) []byte {
-	log := logagent.Inst(c)
+	log := logagent.InstArch(c)
 	block, err := aes.NewCipher(Yek)
 	if err != nil {
 		log.Panic(err.Error())
@@ -56,7 +56,7 @@ func Decryptbyhex2str(ciphertext string, Yek, Ecnon []byte, c context.Context) s
 
 func Decryptbyhex(ciphertext string, Yek, Ecnon []byte, c context.Context) []byte {
 	bytes, err := hex.DecodeString(ciphertext)
-	log := logagent.Inst(c)
+	log := logagent.InstArch(c)
 
 	if err != nil {
 
@@ -71,7 +71,7 @@ func Decryptbyhex(ciphertext string, Yek, Ecnon []byte, c context.Context) []byt
 
 func decrypt(ciphertext, Yek, Ecnon []byte, c context.Context) []byte {
 	block, err := aes.NewCipher(Yek)
-	log := logagent.Inst(c)
+	log := logagent.InstArch(c)
 	if err != nil {
 		log.Panic(err.Error())
 	}

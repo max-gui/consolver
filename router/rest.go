@@ -16,6 +16,7 @@ import (
 	"github.com/max-gui/consolver/internal/pkg/dbops"
 	"github.com/max-gui/fileconvagt/pkg/convertops"
 	"github.com/max-gui/logagent/pkg/logagent"
+	"github.com/max-gui/logagent/pkg/logsets"
 	"github.com/max-gui/logagent/pkg/routerutil"
 	"github.com/max-gui/redisagent/pkg/redisops"
 
@@ -26,6 +27,9 @@ import (
 
 func SetupRouter() *gin.Engine {
 	// r := gin.Default()
+	if *logsets.Appenv == "prod" {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	r := gin.New()                      //.Default()
 	r.Use(routerutil.GinHeaderMiddle()) // ginHeaderMiddle())
 	r.Use(routerutil.GinLogger())       //LoggerWithConfig())
@@ -182,7 +186,7 @@ func generate4all(c *gin.Context) {
 }
 
 func Generateallconfig(srcPaths string, c context.Context) error {
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Printf("the srcPaths are %s", srcPaths)
 
 	pathArray := strings.Split(srcPaths, ",")
@@ -192,7 +196,7 @@ func Generateallconfig(srcPaths string, c context.Context) error {
 }
 
 func GenerateappconfigRemotePath(appname, path string, c context.Context) error {
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Printf("the appname is %s", appname)
 	logger.Printf("the path is %s", path)
 
@@ -202,7 +206,7 @@ func GenerateappconfigRemotePath(appname, path string, c context.Context) error 
 
 func GenerateappconfigRemote(appname string, c context.Context) (map[string]map[string]string, error) {
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Printf("the appname is %s", appname)
 
 	_, tags, err := writeAppConfig(appname, c)
@@ -327,7 +331,7 @@ func writeAppConfig(appname string, c context.Context) (map[string]interface{}, 
 
 func GenerateallconfigRemote(srcPaths string, c context.Context) error {
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Printf("the srcPaths are %s", srcPaths)
 
 	pathArray := strings.Split(srcPaths, ",")
@@ -342,7 +346,7 @@ func writeConfigFile(pathArray []string, c context.Context) (map[string]interfac
 	var err error
 	var filecontent, path, contentstr string
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	var f0 = func(appname string, content map[string]interface{}, env string) (map[string]interface{}, error) {
 		if r, ok := content["af-arch"].(map[string]interface{})["resource"].(map[string]interface{}); ok {
 			var resourceids []string
@@ -391,7 +395,7 @@ func writeConfigFileWith(pathArray []string, c context.Context) (map[string]inte
 	var err error
 	var filecontent, path, contentstr string
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	var f0 = func(appname string, content map[string]interface{}, env string) (map[string]interface{}, error) {
 		if r, ok := content["af-arch"].(map[string]interface{})["resource"].(map[string]interface{}); ok {
 			var resourceids []string
@@ -437,7 +441,7 @@ func writeConfigFileWith(pathArray []string, c context.Context) (map[string]inte
 func writeAppendConfigWith(appname, path, env string, c context.Context) {
 	rediscli := redisops.Pool().Get()
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	defer rediscli.Close()
 
 	var filename string
@@ -487,7 +491,7 @@ func writeAppendConfigWith(appname, path, env string, c context.Context) {
 
 func writeAppendConfig(path string, env string, c context.Context) {
 	var filename string
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	lastIndex := strings.LastIndex(path, "/")
 	basepath := path[0:lastIndex]
 	for _, v := range constset.AppendSet {
@@ -522,7 +526,7 @@ func writeAppendConfig(path string, env string, c context.Context) {
 
 func writeAppendConfigredis(path string, tags map[string]map[string]string, env string, c context.Context) {
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	rediscli := redisops.Pool().Get()
 
 	defer rediscli.Close()
@@ -582,7 +586,7 @@ func writeAppendConfigredis(path string, tags map[string]map[string]string, env 
 func gen4all(c *gin.Context) {
 	envs := c.Query("envs")
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Printf("the envs are %s", envs)
 
 	envarray := strings.Split(envs, ",")
@@ -609,7 +613,7 @@ func gen4all(c *gin.Context) {
 
 func Get4all(c *gin.Context) {
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	file, head, _ := c.Request.FormFile("file")
 	logger.Println(head.Filename)
 
@@ -659,7 +663,7 @@ func Get4env(c *gin.Context) {
 	target_env := c.Param("env")
 	file, head, _ := c.Request.FormFile("file")
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Println(head.Filename)
 
 	content, err := fileops.ReadFrom(file, c)
@@ -685,7 +689,7 @@ func fileTokenOnline(c *gin.Context) {
 	json := make(map[string]string) //注意该结构接受的内容
 	c.ShouldBindJSON(&json)
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Println(json)
 
 	resStr := cypher.Md5str(json["data"])
@@ -699,7 +703,7 @@ func fileTokenOnline(c *gin.Context) {
 func Encrypt2Hexonline(c *gin.Context) {
 	json := make(map[string]string) //注意该结构接受的内容
 	c.ShouldBindJSON(&json)
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Println(json)
 
 	resStr := cypher.EncryptStr2hex(json["data"], constset.Yek, constset.Ecnon, c)
@@ -713,7 +717,7 @@ func Encrypt2Hexonline(c *gin.Context) {
 func DecryptHexonline(c *gin.Context) {
 	json := make(map[string]string) //注意该结构接受的内容
 	c.ShouldBindJSON(&json)
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Println(json)
 
 	resbytes := cypher.Decryptbyhex(json["data"], constset.Yek, constset.Ecnon, c)
@@ -750,7 +754,7 @@ func EncryptConfig2Hexonline(c *gin.Context) {
 	var err error
 	var file multipart.File
 	var head *multipart.FileHeader
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	if file, head, err = c.Request.FormFile("file"); err == nil {
 		logger.Println(err)
 		logger.Println(file)
@@ -822,7 +826,7 @@ func DecryptHexConfigOnline(c *gin.Context) {
 	var err error
 	var file multipart.File
 	var head *multipart.FileHeader
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	if file, head, err = c.Request.FormFile("file"); err == nil {
 		logger.Println(err)
 		logger.Println(file)

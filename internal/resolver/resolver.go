@@ -17,7 +17,8 @@ import (
 // var resolveinfra = resolveInfrastructure
 // var generateConfFromMap = generateConfigContentFromTmplMap
 
-/**
+/*
+*
 根据模板yaml内容生产配置文件内容
 */
 func generateConfigFileContent(tmplYaml string, c context.Context) (string, string, string) {
@@ -89,7 +90,8 @@ func generateConfigContentFromTmplMap(tmplMap map[interface{}]interface{}, env s
 	return resultMap
 }
 
-/**
+/*
+*
 解析资源，将tmplMap中的内容处理后赋值到resultMap中
 */
 func resolveInfrastructure(resultMap map[interface{}]interface{}, tmplMap map[interface{}]interface{}, env string, c context.Context) {
@@ -165,7 +167,8 @@ func resolveInfrastructure(resultMap map[interface{}]interface{}, tmplMap map[in
 	}
 }
 
-/**
+/*
+*
 copy原有的map，顺便排查掉entityType和entityId这两个Yek
 */
 func deepCopyMap(dest map[interface{}]interface{}, src map[interface{}]interface{}) {
@@ -178,7 +181,7 @@ func deepCopyMap(dest map[interface{}]interface{}, src map[interface{}]interface
 
 func generateConfigFile(path string, c context.Context) error {
 	appTmplYaml, _ := fileops.Read(path)
-	log := logagent.Inst(c)
+	log := logagent.InstArch(c)
 	log.Printf("app config template content: \n%s", appTmplYaml)
 
 	prodConfigFileContent, uatConfigFileContent, sitConfigFileContent := generateConfigFileContent(appTmplYaml, c)
@@ -200,7 +203,7 @@ func generateConfigFile(path string, c context.Context) error {
 
 func GenerateConfigvVOld(c *gin.Context) {
 	srcPaths := c.Query("srcPaths")
-	log := logagent.Inst(c)
+	log := logagent.InstArch(c)
 	log.Printf("the srcPaths are %s", srcPaths)
 
 	pathArray := strings.Split(srcPaths, ",")

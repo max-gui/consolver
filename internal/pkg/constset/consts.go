@@ -75,16 +75,17 @@ var (
 )
 
 func StartupInit(bytes []byte, c context.Context) {
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	confmap := map[string]interface{}{}
 	yaml.Unmarshal(bytes, confmap)
 	*consulsets.Acltoken = confmap["af-arch"].(map[interface{}]interface{})["resource"].(map[interface{}]interface{})["private"].(map[interface{}]interface{})["acl-token"].(string)
 	consulsets.StartupInit(*consulsets.Acltoken)
 	Confpath = *logsets.Apppath + "confs" + string(os.PathSeparator)
-	// config := consulhelp.Getconfaml(*ConfResPrefix, "redis", "redis-sentinel-proxy", *logsets.Appenv, c)
-	redisopsUrl := confmap["af-arch"].(map[interface{}]interface{})["resource"].(map[interface{}]interface{})["redis-sentinel-proxy"].(map[interface{}]interface{})["url"].(string)
+
+	// config := consulhelp.Getconfaml(*ConfResPrefix, "redis", "redis-cluster-predixy", *logsets.Appenv, c)
+	redisopsUrl := confmap["af-arch"].(map[interface{}]interface{})["resource"].(map[interface{}]interface{})["redis-cluster-predixy"].(map[interface{}]interface{})["url"].(string)
 	// redisops.Url = confmap["url"].(string)
-	redisopsPwd := confmap["af-arch"].(map[interface{}]interface{})["resource"].(map[interface{}]interface{})["redis-sentinel-proxy"].(map[interface{}]interface{})["password"].(string)
+	redisopsPwd := confmap["af-arch"].(map[interface{}]interface{})["resource"].(map[interface{}]interface{})["redis-cluster-predixy"].(map[interface{}]interface{})["password"].(string)
 	// redisops.Pwd = confmap["password"].(string)
 	redisops.StartupInit(redisopsUrl, redisopsPwd)
 
@@ -162,7 +163,7 @@ func init() {
 	ConfArchPrefix = flag.String("confArchPrefix", "ops/iac/arch/", "arch prefix for consul")
 	ConfResPrefix = flag.String("ConfResPrefix", "ops/resource/", "resource prefix for consul")
 	ConfWatchPrefix = flag.String("ConfWatchPrefix", "ops/", "watch prefix for consul")
-	// Apppath = flag.String("apppath", "/Users/max/Downloads/consolver/", "app root path")
+	// Apppath = flag.String("apppath", "/Users/jimmy/Downloads/consolver/", "app root path")
 	// Acltoken = flag.String("acltoken", "", "consul acltoken")
 	Servermode = flag.Bool("servermode", true, "true: run as httpserver;false: run as commond line")
 	Filepaths = flag.String("filepaths", "", "(in nonserver mode)filepath split by ','")

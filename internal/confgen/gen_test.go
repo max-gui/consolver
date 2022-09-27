@@ -2,13 +2,19 @@ package confgen
 
 import (
 	"context"
-	"io/ioutil"
+	"flag"
+	"fmt"
 	"os"
 	"testing"
 
+	"github.com/max-gui/consolver/internal/pkg/constset"
 	"github.com/max-gui/consolver/internal/pkg/cypher"
+	"github.com/max-gui/consulagent/pkg/consulsets"
 	"github.com/max-gui/fileconvagt/pkg/convertops"
 	"github.com/max-gui/fileconvagt/pkg/fileops"
+	"github.com/max-gui/logagent/pkg/confload"
+	"github.com/max-gui/logagent/pkg/logsets"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,6 +24,13 @@ import (
 var testpath string
 
 func setup() {
+	*logsets.Apppath = "/Users/jimmy/Projects/hercules/consolver"
+	*logsets.Port = "8080"
+	*consulsets.Consul_host = "http://consul-stg.paic.com.cn"
+	*logsets.DCENV = "test"
+	flag.Parse()
+	bytes := confload.Load(context.Background())
+	constset.StartupInit(bytes, context.Background())
 	// plaintext = "123"
 	// cryptedHexText = "1bda1896724a4521cfb7f38646824197929cd1"
 	// constset.StartupInit()
@@ -42,19 +55,61 @@ func teardown() {
 // 	teardown()
 // }
 
-// func prepareTestConfigs() {
-// 	Makeconfiglist(func(entitytype, entityid, env, configcontent string) {
-// 		resp, err := consulhelp.Sendconfig2consul(entitytype, entityid, env, configcontent)
-// 		if err != nil {
-// 			fmt.Println(err.Error())
-// 		}
-// 		fmt.Println(resp)
-// 	})
-// }
+//	func prepareTestConfigs() {
+//		Makeconfiglist(func(entitytype, entityid, env, configcontent string) {
+//			resp, err := consulhelp.Sendconfig2consul(entitytype, entityid, env, configcontent)
+//			if err != nil {
+//				fmt.Println(err.Error())
+//			}
+//			fmt.Println(resp)
+//		})
+//	}
 func Test_Getconfigdd(t *testing.T) {
-	bytes, _ := ioutil.ReadFile("/Users/max/Downloads/application.yml")
+	bytes, _ := os.ReadFile("/Users/max/Downloads/application.yml")
 	readConfigContent(string(bytes), context.Background())
 
+}
+
+func Test_GetOnlineConfig_sameid(t *testing.T) {
+	var entityId, env = "b", "test"
+	var valid, valenv = entityId, env
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("The code did not panic")
+		} else {
+			// fmt.Print(r.(*logrus.Entry).Message)
+			// fmt.Print(valid)
+			// fmt.Print(valenv)
+			msg := fmt.Sprintf("refrence id and env cant be the same;entityid:%s,env:%s;real-id:%s,real-env:%s", entityId, env, valid, valenv)
+			assert.Equal(t, msg, r.(*logrus.Entry).Message)
+		}
+
+	}()
+
+	c := context.Background()
+
+	GetOnlineConfig("a", "b", "test", c)
+}
+
+func Test_GetOnlineConfig_sameid_sameenv(t *testing.T) {
+	var entityId, env = "b", "test"
+	var valid, valenv = entityId, env
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("The code did not panic")
+		} else {
+			// fmt.Print(r.(*logrus.Entry).Message)
+			// fmt.Print(valid)
+			// fmt.Print(valenv)
+			msg := fmt.Sprintf("refrence id and env cant be the same;entityid:%s,env:%s;real-id:%s,real-env:%s", entityId, env, valid, valenv)
+			assert.Equal(t, msg, r.(*logrus.Entry).Message)
+		}
+
+	}()
+
+	c := context.Background()
+
+	GetOnlineConfig("a", entityId, env, c)
 }
 
 func Test_Getconfig(t *testing.T) {

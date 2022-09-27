@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -40,16 +39,22 @@ func GetOnlineConfig(entityType string, entityId string, env string, c context.C
 	infraInfo := make(map[string]interface{})
 	err := yaml.Unmarshal([]byte(resstr), &infraInfo)
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	if err == nil {
 		if valid, ok := infraInfo["real-id"]; ok {
 			if valenv, ok := infraInfo["real-env"]; ok {
 				logger.Print(valid)
 				logger.Print(valenv)
-				resstr = GetOnlineConfig(convertops.StrValOfInterface(entityType), convertops.StrValOfInterface(valid), convertops.StrValOfInterface(valenv), c)
+				if convertops.StrValOfInterface(valid) == entityId && convertops.StrValOfInterface(valenv) == env {
+					logger.Panicf("refrence id and env cant be the same;entityid:%s,env:%s;real-id:%s,real-env:%s", entityId, env, valid, valenv)
+				}
+				resstr = GetOnlineConfig(entityType, convertops.StrValOfInterface(valid), convertops.StrValOfInterface(valenv), c)
 				// resstr, err := GetFrom(convertops.StrValOfInterface(entityType), convertops.StrValOfInterface(entityId), env)
 			} else {
-				resstr = GetOnlineConfig(convertops.StrValOfInterface(entityType), convertops.StrValOfInterface(valid), env, c)
+				if convertops.StrValOfInterface(valid) == entityId {
+					logger.Panicf("refrence id and env cant be the same;entityid:%s,env:%s;real-id:%s,real-env:%s", entityId, env, valid, valenv)
+				}
+				resstr = GetOnlineConfig(entityType, convertops.StrValOfInterface(valid), env, c)
 			}
 		}
 	}
@@ -76,7 +81,7 @@ func GenerateConfigString(appTmplYaml string, env string, c context.Context) str
 	fmt.Println("--------------------generateConfigString-----------------------")
 	resultMap := generateConfigContent(appTmplYaml, env, c)
 	resultStr := convertops.ConvertStrMapToYaml(&resultMap, c)
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Printf("%s config file content: \n%s", env, resultStr)
 	return resultStr
 }
@@ -123,7 +128,7 @@ func getResEntity(appname string, c context.Context) map[string]interface{} { //
 	var resmap = map[string]interface{}{}
 	json.Unmarshal(bytes, &resmap)
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Print(resmap)
 
 	if val, ok := resmap["Application"]; ok {
@@ -149,7 +154,7 @@ func configContentOutputwithResmap(env string, entityids map[string]interface{},
 	resource := make(map[string]interface{})
 	resource["env"] = env
 	afarch["resource"] = resource
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Print("ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss")
 	logger.Print(entityids)
 
@@ -184,7 +189,7 @@ func configContentOutputwithResmap(env string, entityids map[string]interface{},
 }
 
 func readConfigContent(appTmplYaml string, c context.Context) (map[string]interface{}, string) {
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Printf("app config template content: \n%s", appTmplYaml)
 
 	contentMap := ConvertMap4Json(convertops.ConvertYamlToMap(appTmplYaml, c), cypher.Decryptbyhex2str, c)
@@ -201,7 +206,7 @@ func readConfigContent(appTmplYaml string, c context.Context) (map[string]interf
 
 func readAppname(contentMap map[string]interface{}, c context.Context) string {
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	defer func() {
 		if e := recover(); e != nil {
 
@@ -227,7 +232,7 @@ func GenerateConfigContentList(appTmplYaml string, envlist []string, Process4env
 	var d map[string]interface{}
 	var err error
 	// var appname string
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	orgMap, appname := readConfigContent(appTmplYaml, c)
 	for _, env := range envlist {
 		d = configContentOutput(env, orgMap, c)
@@ -251,7 +256,7 @@ func GetAppConfigContentList(appname string, envlist []string, Process4env Proce
 	var err error
 	rediscli := redisops.Pool().Get()
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	defer rediscli.Close()
 	// _, err := rediscli.Do("HSET", "confsolver-"+appname, filenamestr, writeContent)
 	// contentMap := ConvertMap4Json(convertops.ConvertYamlToMap(appTmplYaml), cypher.Decryptbyhex2str)
@@ -298,7 +303,7 @@ func GenerateAppConfigContentList(appname string, envlist []string, Process4env 
 	var resmap = getResEntity(appname, c)
 	var tags = map[string]map[string]string{}
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	// contentMap := ConvertMap4Json(convertops.ConvertYamlToMap(appTmplYaml), cypher.Decryptbyhex2str)
 	for _, env := range envlist {
 		d = configContentOutputwithResmap(env, resmap, tags, c)
@@ -332,7 +337,7 @@ func GenerateConfigContentListremote(appTmplYaml string, envlist []string, Proce
 	// json.Unmarshal(bytes, &resmap)
 	var resmap = getResEntity(appname, c)
 	var tags = map[string]map[string]string{}
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	// contentMap := ConvertMap4Json(convertops.ConvertYamlToMap(appTmplYaml), cypher.Decryptbyhex2str)
 	for _, env := range envlist {
 		d = configContentOutputwithResmap(env, resmap, tags, c)
@@ -361,7 +366,7 @@ func ConvertMap4Json(m interface{}, cypher_func convert_cypher, c context.Contex
 
 func getPostFileConfig(file io.Reader, cypher_func convert_cypher, c context.Context) (map[string]interface{}, error) {
 	// err, configstr := fileops.ReadFrom(file)
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	if configstr, err := fileops.ReadFrom(file, c); err != nil {
 
 		logger.Panic(err.Error())
@@ -398,7 +403,7 @@ func convertInterMap4Json(m interface{}, cypher_func convert_cypher, c context.C
 	var strmap map[string]interface{}
 	var mstr string
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	if intermap, ok := m.(map[interface{}]interface{}); ok {
 		for k, v := range intermap {
 			res[k.(string)] = convertInterMap4Json(v, cypher_func, c)
@@ -412,7 +417,7 @@ func convertInterMap4Json(m interface{}, cypher_func convert_cypher, c context.C
 		} else {
 			mstr, ok = m.(string)
 			if ok && strings.HasPrefix(mstr, "cypher=") {
-				cypherstr := strings.Trim(mstr, "cypher=")
+				cypherstr := strings.TrimPrefix(mstr, "cypher=")
 				logger.Println("**********************convertInterMap4Json*******************************")
 
 				logger.Printf("cypherstr: %v", cypherstr)
@@ -450,8 +455,8 @@ func Makeconfiglist(c context.Context) string { //f0 func(entitytype, entityid, 
 	abspath, _ := filepath.Abs(pathname)
 	// consulhelp.Consulurl = "http://localhost:32771"
 	// consulhelp.AclToken = ""
-	files, err := ioutil.ReadDir(abspath)
-	logger := logagent.Inst(c)
+	files, err := os.ReadDir(abspath)
+	logger := logagent.InstArch(c)
 	if err != nil {
 		logger.Panic(err)
 	}
@@ -476,13 +481,13 @@ func Makeconfiglist(c context.Context) string { //f0 func(entitytype, entityid, 
 			configfilepath = pathname + PthSep + file.Name()
 			// fmt.Println(configfilepath)
 
-			content, _ := ioutil.ReadFile(configfilepath)
+			content, _ := os.ReadFile(configfilepath)
 
 			// config := make(map[string]interface{})
 			// configlist = append(configlist, config)
 
 			// fmt.Println(string(content))
-			_, err := consulhelp.Sendconfig2consul(entitytype, entityid, env, string(content))
+			_, err := consulhelp.Sendconfig2consul(entitytype, entityid, env, string(content), c)
 			if err != nil {
 				logger.Panic(err.Error())
 				fmt.Println(err.Error())

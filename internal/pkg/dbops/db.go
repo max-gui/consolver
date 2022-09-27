@@ -36,7 +36,7 @@ func dbInit(c context.Context) *gorose.Engin {
 	// 配置&gorose.Config{}是单一数据库配置
 	// 如果配置读写分离集群,则使用&gorose.ConfigCluster{}
 	var err error
-	log := logagent.Inst(c)
+	log := logagent.InstArch(c)
 	once.Do(func() {
 
 		c := logagent.GetRootContextWithTrace()
@@ -66,7 +66,7 @@ func DB(c context.Context) gorose.IOrm {
 
 func Insert_appRes(appname, resourceid, env string, c context.Context) {
 	orm := DB(c)
-	log := logagent.Inst(c)
+	log := logagent.InstArch(c)
 
 	// orm.GetTable()
 	var ar App_Resource
@@ -79,7 +79,7 @@ func Insert_appRes(appname, resourceid, env string, c context.Context) {
 
 func Update_appRes(appname, env string, resourceid []string, c context.Context) {
 	orm := DB(c)
-	log := logagent.Inst(c)
+	log := logagent.InstArch(c)
 
 	err := orm.Transaction(
 		// 第一个业务
@@ -165,7 +165,7 @@ func Update_appRes(appname, env string, resourceid []string, c context.Context) 
 
 func Query_appRes(c context.Context) []App_Resource {
 	orm := DB(c)
-	log := logagent.Inst(c)
+	log := logagent.InstArch(c)
 
 	// orm.GetTable()
 	var ar []App_Resource

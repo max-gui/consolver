@@ -12,9 +12,9 @@
             "program": "${workspaceFolder}/cmd/arch-pkg-config",
             "env": {},
             "args": [
-                "-apppath=/Users/max/Downloads/consolver",
+                "-apppath=/Users/jimmy/Projects/hercules/consolver",
                 "-port=8181",
-                "-consulhost=http://consul-prod.kube.com"]
+                "-consulhost=http://consul-stg.paic.com.cn"]
         },
         {
             "name": "Launch test function",
@@ -23,6 +23,7 @@
             "mode": "test",
             "program": "${workspaceFolder}",
             "args": [
+                "-apppath=/Users/jimmy/Projects/hercules/consolver",
                 "-test.run",
                 // "-v",
                 // "-cover=true",

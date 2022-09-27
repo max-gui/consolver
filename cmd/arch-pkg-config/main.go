@@ -17,11 +17,11 @@ func main() {
 
 	// var Argsetmap = make(map[string]interface{})
 	flag.Parse()
-	bytes := confload.Load()
 	c := logagent.GetRootContextWithTrace()
+	bytes := confload.Load(c)
 	constset.StartupInit(bytes, c)
 
-	logger := logagent.Inst(c)
+	logger := logagent.InstArch(c)
 	logger.Print(*consulsets.Acltoken)
 
 	go consulhelp.StartWatch(*constset.ConfWatchPrefix, true, c)
