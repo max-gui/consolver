@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -43,6 +44,7 @@ func SetupRouter() *gin.Engine {
 
 	r.GET("/conf/apply/:appname", generate4one)
 	r.GET("/conf/gen/:appname", generate4oneiac)
+	r.POST("/conf/gen/:appname", generate4oneiac)
 
 	r.POST("/genall/:envs", gen4all)
 
@@ -100,8 +102,14 @@ func generate4one(c *gin.Context) {
 
 func generate4oneiac(c *gin.Context) {
 	appname := c.Param("appname")
+
+	envlist := []string{}
+	c.BindJSON(&envlist)
+	if len(envlist) < 1 {
+		envlist = constset.EnvSet
+	}
 	// confgen.ConvertWithCypher = cypher.Decryptbyhex2str
-	tags, err := GenerateappconfigRemote(appname, c)
+	tags, err := GenerateappconfigRemote(appname, envlist, c)
 
 	// var httpstatus = http.StatusOK
 	// var errstr = ""
@@ -204,12 +212,12 @@ func GenerateappconfigRemotePath(appname, path string, c context.Context) error 
 	return err
 }
 
-func GenerateappconfigRemote(appname string, c context.Context) (map[string]map[string]string, error) {
+func GenerateappconfigRemote(appname string, envlist []string, c context.Context) (map[string]map[string]string, error) {
 
 	logger := logagent.InstArch(c)
 	logger.Printf("the appname is %s", appname)
 
-	_, tags, err := writeAppConfig(appname, c)
+	_, tags, err := writeAppConfig(appname, envlist, c)
 	return tags, err
 }
 
@@ -235,7 +243,7 @@ func writeAppConfigPath(appname, path string, c context.Context) (map[string]int
 		// 	}
 		// }
 
-		contentstr, err = fileops.WriteToPath(path, content, env, c)
+		contentstr, err = fileops.WriteToPathWithFilename(path, content, env, c)
 
 		// logger.Println(*constset.Filepaths)
 		//LogConfig/config
@@ -253,7 +261,7 @@ func writeAppConfigPath(appname, path string, c context.Context) (map[string]int
 	return contents, err
 }
 
-func writeAppConfig(appname string, c context.Context) (map[string]interface{}, map[string]map[string]string, error) {
+func writeAppConfig(appname string, envlist []string, c context.Context) (map[string]interface{}, map[string]map[string]string, error) {
 	var contents map[string]interface{}
 
 	var err error
@@ -262,19 +270,19 @@ func writeAppConfig(appname string, c context.Context) (map[string]interface{}, 
 	path := constset.Confpath + appname + string(os.PathSeparator)
 	// ioutil.
 	var f0 = func(appname string, content map[string]interface{}, tag map[string]map[string]string, env string, c context.Context) (map[string]interface{}, error) {
-		if r, ok := content["af-arch"].(map[string]interface{})["resource"].(map[string]interface{}); ok {
-			var resourceids []string
-			for k := range r {
-				if strings.Compare(k, "env") != 0 {
-					resourceids = append(resourceids, k)
-				}
-			}
-			if len(resourceids) != 0 {
-				// env := r["env"].(string)
+		// if r, ok := content["af-arch"].(map[string]interface{})["resource"].(map[string]interface{}); ok {
+		// 	var resourceids []string
+		// 	for k := range r {
+		// 		if strings.Compare(k, "env") != 0 {
+		// 			resourceids = append(resourceids, k)
+		// 		}
+		// 	}
+		// 	if len(resourceids) != 0 {
+		// 		// env := r["env"].(string)
 
-				// dbops.Update_appRes(appname, env, resourceids)
-			}
-		}
+		// 		// dbops.Update_appRes(appname, env, resourceids)
+		// 	}
+		// }
 
 		contentstr, err = fileops.WriteToAppPath(path, appname, content, env, c)
 
@@ -287,7 +295,7 @@ func writeAppConfig(appname string, c context.Context) (map[string]interface{}, 
 		return writecontent, err
 	}
 
-	contents, tags, err := confgen.GenerateAppConfigContentList(appname, constset.EnvSet, f0, c)
+	contents, tags, err := confgen.GenerateAppConfigContentList(appname, envlist, f0, c)
 
 	return contents, tags, err
 }
@@ -444,49 +452,89 @@ func writeAppendConfigWith(appname, path, env string, c context.Context) {
 	logger := logagent.InstArch(c)
 	defer rediscli.Close()
 
-	var filename string
 	lastIndex := strings.LastIndex(path, "/")
 	basepath := path[0:lastIndex]
-	for _, v := range constset.AppendSet {
-		// if v.Env == "" {
-		// 	envpara = env
-		// 	ss := strings.Split(v.Id, ".")
+	var (
+		cursor int64
+		items  []string
+	)
 
-		// 	if len(ss) > 1 {
-		// 		filename = ss[0] + "-" + env + "." + ss[1]
-		// 	} else {
-		// 		filename = v.Id
-		// 	}
-		// } else {
-		// 	envpara = v.Env
-		// 	filename = v.Id
-		// }
-		// filename = v.Id
+	// results := make([][]string, 0)
+	confmap := map[string]string{}
+	for {
+		values, err := redis.Values(rediscli.Do("HSCAN", "confsolver-append", cursor, "MATCH", "*", "COUNT", 1))
 
-		// result := confgen.GetOnlineConfig(v.Type, v.Id, envpara)
-
-		if v.Withenv {
-			ss := strings.Split(v.Id, ".")
-			filename = ss[0] + "-" + env + "." + ss[1]
-		} else {
-			filename = v.Id
-		}
-		logger.Println(basepath + string(os.PathSeparator) + filename)
-		// _, err := rediscli.Do("HSET", "confsolver-append", filename, result)
-		confstr, err := redis.String(rediscli.Do("HGET", "confsolver-append", filename))
-		rediscli.Do("EXPIRE", "confsolver-append", 60*10)
-		// bytes, err := ioutil.ReadFile(constset.Confpath + appname + string(os.PathSeparator) + "application-" + env + ".yml")
 		if err != nil {
 			logger.Panic(err)
 		}
 
-		// bytes, err := ioutil.ReadFile(constset.Confpath + appname + string(os.PathSeparator) + filename)
-		// if err != nil {
-		// 	logger.Panic(err)
-		// }
-		// result := confgen.GetOnlineConfig(v.Type, v.Id, env)
-		fileops.Writeover(basepath+string(os.PathSeparator)+filename, confstr, c)
+		_, err = redis.Scan(values, &cursor, &items)
+		if err != nil {
+			logger.Panic(err)
+		}
+		if len(items) > 0 && math.Mod(float64(len(items)), 2) == 0 {
+			index := 0
+			for {
+				confmap[items[index]] = items[index+1]
+				index = index + 2
+				if index >= len(items) {
+					break
+				}
+			}
+		}
+		// results = append(results, items)
+
+		if cursor == 0 {
+			break
+		}
 	}
+	rediscli.Do("EXPIRE", "confsolver-append", 60*10)
+	for filenamekey, contentvalue := range confmap {
+		fileops.Writeover(basepath+string(os.PathSeparator)+filenamekey, contentvalue, c)
+	}
+
+	// var filename string
+	// for _, v := range constset.AppendSet {
+	// 	// if v.Env == "" {
+	// 	// 	envpara = env
+	// 	// 	ss := strings.Split(v.Id, ".")
+
+	// 	// 	if len(ss) > 1 {
+	// 	// 		filename = ss[0] + "-" + env + "." + ss[1]
+	// 	// 	} else {
+	// 	// 		filename = v.Id
+	// 	// 	}
+	// 	// } else {
+	// 	// 	envpara = v.Env
+	// 	// 	filename = v.Id
+	// 	// }
+	// 	// filename = v.Id
+
+	// 	// result := confgen.GetOnlineConfig(v.Type, v.Id, envpara)
+
+	// 	if v.Withenv {
+	// 		ss := strings.Split(v.Id, ".")
+	// 		filename = ss[0] + "-" +
+	// 			+"." + ss[1]
+	// 	} else {
+	// 		filename = v.Id
+	// 	}
+	// 	logger.Println(basepath + string(os.PathSeparator) + filename)
+	// 	// _, err := rediscli.Do("HSET", "confsolver-append", filename, result)
+	// 	confstr, err := redis.String(rediscli.Do("HGET", "confsolver-append", filename))
+	// 	rediscli.Do("EXPIRE", "confsolver-append", 60*10)
+	// 	// bytes, err := ioutil.ReadFile(constset.Confpath + appname + string(os.PathSeparator) + "application-" + env + ".yml")
+	// 	if err != nil {
+	// 		logger.Panic(err)
+	// 	}
+
+	// 	// bytes, err := ioutil.ReadFile(constset.Confpath + appname + string(os.PathSeparator) + filename)
+	// 	// if err != nil {
+	// 	// 	logger.Panic(err)
+	// 	// }
+	// 	// result := confgen.GetOnlineConfig(v.Type, v.Id, env)
+	// 	fileops.Writeover(basepath+string(os.PathSeparator)+filename, confstr, c)
+	// }
 }
 
 func writeAppendConfig(path string, env string, c context.Context) {
@@ -551,14 +599,16 @@ func writeAppendConfigredis(path string, tags map[string]map[string]string, env 
 		// filename = v.Id
 
 		// result := confgen.GetOnlineConfig(v.Type, v.Id, envpara)
-
+		var result string
 		if v.Withenv {
 			ss := strings.Split(v.Id, ".")
 			filename = ss[0] + "-" + env + "." + ss[1]
+			result = confgen.GetOnlineConfig(v.Type, v.Id, env, c)
 		} else {
 			filename = v.Id
+			result = confgen.GetOnlineConfig(v.Type, v.Id, "prod", c)
 		}
-		result := confgen.GetOnlineConfig(v.Type, v.Id, env, c)
+		// result := confgen.GetOnlineConfig(v.Type, v.Id, env, c)
 
 		tagkey := v.Type + "_" + v.Id // + "_" + env
 		if _, ok := tags[env]; ok {

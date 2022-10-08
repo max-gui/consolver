@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -256,24 +257,79 @@ func GetAppConfigContentList(appname string, envlist []string, Process4env Proce
 	var err error
 	rediscli := redisops.Pool().Get()
 
-	logger := logagent.InstArch(c)
 	defer rediscli.Close()
+
+	logger := logagent.InstArch(c)
 	// _, err := rediscli.Do("HSET", "confsolver-"+appname, filenamestr, writeContent)
 	// contentMap := ConvertMap4Json(convertops.ConvertYamlToMap(appTmplYaml), cypher.Decryptbyhex2str)
-	for _, env := range envlist {
-		confstr, err := redis.String(rediscli.Do("HGET", "confsolver-"+appname, "application-"+env+".yml"))
-		rediscli.Do("EXPIRE", "confsolver-"+appname, 60*10)
-		// bytes, err := ioutil.ReadFile(constset.Confpath + appname + string(os.PathSeparator) + "application-" + env + ".yml")
+
+	// sresult, err := redis.Values(rediscli.Do("HSCAN", "confsolver-"+appname, 0))
+
+	var (
+		cursor int64
+		items  []string
+	)
+
+	// results := make([][]string, 0)
+	confmap := map[string]string{}
+	for {
+		values, err := redis.Values(rediscli.Do("HSCAN", "confsolver-"+appname, cursor, "MATCH", "*", "COUNT", 1))
+
 		if err != nil {
 			logger.Panic(err)
 		}
-		contentMap := ConvertMap4Json(convertops.ConvertYamlToMap(confstr, c), cypher.Decryptbyhex2str, c)
+
+		_, err = redis.Scan(values, &cursor, &items)
+		if err != nil {
+			logger.Panic(err)
+		}
+		if len(items) > 0 && math.Mod(float64(len(items)), 2) == 0 {
+			index := 0
+			for {
+				confmap[items[index]] = items[index+1]
+				index = index + 2
+				if index >= len(items) {
+					break
+				}
+			}
+		}
+		// results = append(results, items)
+
+		if cursor == 0 {
+			break
+		}
+	}
+
+	// for _, env := range envlist {
+	// 	confstr, err := redis.String(rediscli.Do("HGET", "confsolver-"+appname, "application-"+env+".yml"))
+	// 	rediscli.Do("EXPIRE", "confsolver-"+appname, 60*10)
+	// 	// bytes, err := ioutil.ReadFile(constset.Confpath + appname + string(os.PathSeparator) + "application-" + env + ".yml")
+	// 	if err != nil {
+	// 		logger.Panic(err)
+	// 	}
+	// 	contentMap := ConvertMap4Json(convertops.ConvertYamlToMap(confstr, c), cypher.Decryptbyhex2str, c)
+	// 	d = contentMap
+	// 	// var envmap = make(map[string]interface{})
+	// 	// envmap["content"] = d
+	// 	resultlist[env] = d
+
+	// 	_, err = Process4env(appname, d, env)
+	// 	if err != nil {
+	// 		logger.Panic(err.Error())
+	// 		break
+	// 	}
+	// }
+
+	rediscli.Do("EXPIRE", "confsolver-"+appname, 60*10)
+	for env_key, conf_value := range confmap {
+
+		contentMap := ConvertMap4Json(convertops.ConvertYamlToMap(conf_value, c), cypher.Decryptbyhex2str, c)
 		d = contentMap
 		// var envmap = make(map[string]interface{})
 		// envmap["content"] = d
-		resultlist[env] = d
+		resultlist[env_key] = d
 
-		_, err = Process4env(appname, d, env)
+		_, err = Process4env(appname, d, env_key)
 		if err != nil {
 			logger.Panic(err.Error())
 			break

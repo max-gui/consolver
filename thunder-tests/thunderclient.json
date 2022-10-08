@@ -1,0 +1,41 @@
+[
+  {
+    "_id": "e926c74c-2cec-4eb9-8d5e-75b4698f3875",
+    "colId": "00194277-90c1-422d-895f-66e0e1347a1f",
+    "containerId": "",
+    "name": "http://127.0.0.1:8181/conf/gen/:appname",
+    "url": "http://127.0.0.1:8181/conf/gen/fls-aflm-fund-aggregation",
+    "method": "POST",
+    "sortNum": 10000,
+    "created": "2022-10-08T05:00:45.180Z",
+    "modified": "2022-10-08T05:00:45.180Z",
+    "headers": [],
+    "params": [],
+    "body": {
+      "type": "json",
+      "raw": "[\"test\",\"prod\"]",
+      "form": []
+    },
+    "tests": []
+  },
+  {
+    "_id": "337dc142-da0c-4140-aba5-106f6830556f",
+    "colId": "00194277-90c1-422d-895f-66e0e1347a1f",
+    "containerId": "",
+    "name": "http://127.0.0.1:8181/conf/apply/:appname",
+    "url": "http://127.0.0.1:8181/conf/apply/fls-aflm-fund-aggregation?path=/Users/jimmy/Downloads/ttdd/",
+    "method": "GET",
+    "sortNum": 20000,
+    "created": "2022-10-08T05:02:35.897Z",
+    "modified": "2022-10-08T05:02:35.897Z",
+    "headers": [],
+    "params": [
+      {
+        "name": "path",
+        "value": "/Users/jimmy/Downloads/ttdd/",
+        "isPath": false
+      }
+    ],
+    "tests": []
+  }
+]

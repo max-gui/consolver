@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
+
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -91,7 +91,7 @@ func Test_Gen4all(t *testing.T) {
 	//read test dir
 	PthSep := string(os.PathSeparator)
 	dirPth := abstestpath + PthSep + "pathtest"
-	dir, err := ioutil.ReadDir(dirPth)
+	dir, err := os.ReadDir(dirPth)
 	if err != nil {
 		log.Println(err.Error())
 	}
@@ -116,7 +116,7 @@ func Test_Gen4all(t *testing.T) {
 	router.ServeHTTP(w, req)
 	result := w.Result()
 	defer result.Body.Close()
-	resbody, _ := ioutil.ReadAll(result.Body)
+	resbody, _ := io.ReadAll(result.Body)
 
 	resstr = string(resbody)
 	assert.Equal(t, http.StatusOK, result.StatusCode)
@@ -168,7 +168,7 @@ func Test_Get4all(t *testing.T) {
 	router.ServeHTTP(w, req)
 	result := w.Result()
 	defer result.Body.Close()
-	resbody, _ := ioutil.ReadAll(result.Body)
+	resbody, _ := io.ReadAll(result.Body)
 
 	assert.Equal(t, http.StatusOK, result.StatusCode)
 	// pg-pgcypher-sit
@@ -212,7 +212,7 @@ func Test_Get4env(t *testing.T) {
 	router.ServeHTTP(w, req)
 	result := w.Result()
 	defer result.Body.Close()
-	resbody, _ := ioutil.ReadAll(result.Body)
+	resbody, _ := io.ReadAll(result.Body)
 
 	assert.Equal(t, http.StatusOK, result.StatusCode)
 	// pg-pgcypher-sit
@@ -250,7 +250,7 @@ func Test_Encrypt2Hexonline(t *testing.T) {
 	router.ServeHTTP(w, req)
 	result := w.Result()
 	defer result.Body.Close()
-	resbody, _ := ioutil.ReadAll(result.Body)
+	resbody, _ := io.ReadAll(result.Body)
 
 	resstr := string(resbody)
 	resjsonmap := make(map[string]interface{})
@@ -275,7 +275,7 @@ func Test_fileTokenOnline(t *testing.T) {
 	router.ServeHTTP(w, req)
 	result := w.Result()
 	defer result.Body.Close()
-	resbody, _ := ioutil.ReadAll(result.Body)
+	resbody, _ := io.ReadAll(result.Body)
 
 	resstr := string(resbody)
 	resjsonmap := make(map[string]interface{})
@@ -300,7 +300,7 @@ func Test_DecryptHexonline(t *testing.T) {
 	router.ServeHTTP(w, req)
 	result := w.Result()
 	defer result.Body.Close()
-	resbody, _ := ioutil.ReadAll(result.Body)
+	resbody, _ := io.ReadAll(result.Body)
 
 	resstr := string(resbody)
 	resjsonmap := make(map[string]interface{})
@@ -323,7 +323,7 @@ func Test_EncryptConfig2Hexonline(t *testing.T) {
 	router.ServeHTTP(w, req)
 	result := w.Result()
 	defer result.Body.Close()
-	resbody, _ := ioutil.ReadAll(result.Body)
+	resbody, _ := io.ReadAll(result.Body)
 
 	assert.Equal(t, http.StatusOK, result.StatusCode)
 	// pg-pgcypher-sit
@@ -353,7 +353,7 @@ func Test_DecryptHexConfigOnline(t *testing.T) {
 	router.ServeHTTP(w, req)
 	result := w.Result()
 	defer result.Body.Close()
-	resbody, _ := ioutil.ReadAll(result.Body)
+	resbody, _ := io.ReadAll(result.Body)
 
 	assert.Equal(t, http.StatusOK, result.StatusCode)
 	// pg-pgcypher-sit

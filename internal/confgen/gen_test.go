@@ -4,9 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"testing"
 
+	"github.com/garyburd/redigo/redis"
 	"github.com/max-gui/consolver/internal/pkg/constset"
 	"github.com/max-gui/consolver/internal/pkg/cypher"
 	"github.com/max-gui/consulagent/pkg/consulsets"
@@ -14,6 +16,7 @@ import (
 	"github.com/max-gui/fileconvagt/pkg/fileops"
 	"github.com/max-gui/logagent/pkg/confload"
 	"github.com/max-gui/logagent/pkg/logsets"
+	"github.com/max-gui/redisagent/pkg/redisops"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -68,6 +71,42 @@ func Test_Getconfigdd(t *testing.T) {
 	bytes, _ := os.ReadFile("/Users/max/Downloads/application.yml")
 	readConfigContent(string(bytes), context.Background())
 
+}
+
+func Test_ddd(t *testing.T) {
+	redisops.StartupInit("10.25.80.6:7617", "a01cfbde22a947e9b75b7aa027ac529e")
+	rediscli := redisops.Pool().Get()
+	// sresult, err := redis.Values(rediscli.Do("HSCAN", "confsolver-"+appname, 0))
+
+	var (
+		cursor int64
+		items  []string
+	)
+
+	// results := make([][]string, 0)
+	mm := map[string]string{}
+	count := 1
+	for {
+		values, err := redis.Values(rediscli.Do("HSCAN", "aa", cursor, "MATCH", "*", "COUNT", 1))
+		if err != nil {
+			return
+		}
+		_, err = redis.Scan(values, &cursor, &items)
+		if err != nil {
+			return
+		}
+
+		mm[items[0]] = items[1]
+		// results = append(results, items)
+
+		if cursor == 0 {
+			break
+		}
+		log.Print(count)
+		count = count + 1
+	}
+
+	log.Print(mm)
 }
 
 func Test_GetOnlineConfig_sameid(t *testing.T) {

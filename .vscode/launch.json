@@ -14,7 +14,10 @@
             "args": [
                 "-apppath=/Users/jimmy/Projects/hercules/consolver",
                 "-port=8181",
-                "-consulhost=http://consul-stg.paic.com.cn"]
+                "-consulhost=http://consul-prod.paic.com.cn",
+                "-appdcenv=test",
+                "-appendset=bootload:bootstrap.yml:true,LogConfig:logback-spring.xml:false,configCheck:configCheck.yml:false"
+            ]
         },
         {
             "name": "Launch test function",
