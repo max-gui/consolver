@@ -8,12 +8,12 @@
     "method": "POST",
     "sortNum": 10000,
     "created": "2022-10-08T05:00:45.180Z",
-    "modified": "2022-10-08T05:00:45.180Z",
+    "modified": "2022-10-08T08:14:25.114Z",
     "headers": [],
     "params": [],
     "body": {
       "type": "json",
-      "raw": "[\"test\",\"prod\"]",
+      "raw": "[\"testLFB\",\"uatLFB\",\"prodLFB\"]",
       "form": []
     },
     "tests": []
