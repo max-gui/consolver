@@ -4,11 +4,11 @@
     "colId": "00194277-90c1-422d-895f-66e0e1347a1f",
     "containerId": "",
     "name": "http://127.0.0.1:8181/conf/gen/:appname",
-    "url": "http://127.0.0.1:8181/conf/gen/fls-aflm-fund-aggregation",
+    "url": "http://127.0.0.1:8181/conf/gen/fls-cgj-wx-server",
     "method": "POST",
     "sortNum": 10000,
     "created": "2022-10-08T05:00:45.180Z",
-    "modified": "2022-10-08T08:14:25.114Z",
+    "modified": "2022-10-19T08:57:37.359Z",
     "headers": [],
     "params": [],
     "body": {
