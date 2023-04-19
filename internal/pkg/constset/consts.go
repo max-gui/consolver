@@ -64,18 +64,22 @@ var Ecnon = []byte{9, 65, 48, 149, 170, 165, 84, 222, 74, 84, 4, 106}
 var (
 	envset, Filepaths, ConfArchPrefix, ConfResPrefix, ConfWatchPrefix *string
 	appendSet                                                         *string
+	insertSet                                                         *string
 	Confpath                                                          string
 	Oniac, Servermode                                                 *bool
 	EnvSet                                                            []string
-	AppendSet                                                         []struct {
-		Type    string
-		Id      string
-		Withenv bool
-	}
+	AppendSet                                                         []AppendStruct
+	InsertSet                                                         []AppendStruct
 )
 
+type AppendStruct struct {
+	Type    string
+	Id      string
+	Withenv bool
+}
+
 func StartupInit(bytes []byte, c context.Context) {
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	confmap := map[string]interface{}{}
 	yaml.Unmarshal(bytes, confmap)
 	*consulsets.Acltoken = confmap["af-arch"].(map[interface{}]interface{})["resource"].(map[interface{}]interface{})["private"].(map[interface{}]interface{})["acl-token"].(string)
@@ -95,33 +99,60 @@ func StartupInit(bytes []byte, c context.Context) {
 		Id      string
 		Withenv bool
 	}{}
-	var appendv []string
+	// var appendv []string
+
+	// for _, v := range strings.Split(*appendSet, ",") {
+	// 	// envpara = ""
+	// 	appendv = strings.Split(v, ":")
+	// 	if len(appendv) <= 1 {
+	// 		continue
+	// 	}
+	// 	withenv, err := strconv.ParseBool(appendv[2])
+	// 	if err != nil {
+	// 		logger.Panic(err)
+	// 	}
+	// 	// withenv := false
+	// 	// if appendv[2] == "withenv" {
+	// 	// 	withenv = true
+	// 	// }else if appendv[2] == "noenv"{
+	// 	// 	withenv = false
+	// 	// }else
+
+	// 	appenditem = struct {
+	// 		Type    string
+	// 		Id      string
+	// 		Withenv bool
+	// 	}{Type: appendv[0], Id: appendv[1], Withenv: withenv}
+
+	// 	AppendSet = append(AppendSet, appenditem)
+	// }
 	// var envpara = ""
-	for _, v := range strings.Split(*appendSet, ",") {
-		// envpara = ""
-		appendv = strings.Split(v, ":")
-		if len(appendv) <= 1 {
-			continue
-		}
-		withenv, err := strconv.ParseBool(appendv[2])
-		if err != nil {
-			logger.Panic(err)
-		}
-		// withenv := false
-		// if appendv[2] == "withenv" {
-		// 	withenv = true
-		// }else if appendv[2] == "noenv"{
-		// 	withenv = false
-		// }else
+	var appendProc = func(appends string, appendstructs *[]AppendStruct) {
+		for _, v := range strings.Split(appends, ",") {
+			// envpara = ""
+			var appendv = strings.Split(v, ":")
+			if len(appendv) <= 1 {
+				continue
+			}
+			withenv, err := strconv.ParseBool(appendv[2])
+			if err != nil {
+				logger.Panic(err)
+			}
+			// withenv := false
+			// if appendv[2] == "withenv" {
+			// 	withenv = true
+			// }else if appendv[2] == "noenv"{
+			// 	withenv = false
+			// }else
 
-		appenditem = struct {
-			Type    string
-			Id      string
-			Withenv bool
-		}{Type: appendv[0], Id: appendv[1], Withenv: withenv}
+			appenditem = AppendStruct{Type: appendv[0], Id: appendv[1], Withenv: withenv}
 
-		AppendSet = append(AppendSet, appenditem)
+			*appendstructs = append(*appendstructs, appenditem)
+		}
 	}
+
+	appendProc(*appendSet, &AppendSet)
+	appendProc(*insertSet, &InsertSet)
 
 	// var argset []string
 
@@ -167,7 +198,8 @@ func init() {
 	// Acltoken = flag.String("acltoken", "", "consul acltoken")
 	Servermode = flag.Bool("servermode", true, "true: run as httpserver;false: run as commond line")
 	Filepaths = flag.String("filepaths", "", "(in nonserver mode)filepath split by ','")
-	appendSet = flag.String("appendset", "bootload:bootstrap.yml:true,LogConfig:logback-spring.xml:false", "append confg, format is type:id:withenv, split by ',' e.g: 'type:id:true,type:id:false'")
+	appendSet = flag.String("appendset", "LogConfig:logback-spring.xml:false", "append confg, format is type:id:withenv, split by ',' e.g: 'type:id:true,type:id:false'")
+	insertSet = flag.String("insertset", "bootload:bootstrap.yml:true", "insert confg, format is type:id:withenv, split by ',' e.g: 'type:id:true,type:id:false'")
 
 	// Consul_host = flag.String("consulhost", "http://consul-prod.kube.com", "consul url")
 	// Port = flag.String("port", "8181", "this app's port")

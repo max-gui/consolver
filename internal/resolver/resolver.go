@@ -181,7 +181,7 @@ func deepCopyMap(dest map[interface{}]interface{}, src map[interface{}]interface
 
 func generateConfigFile(path string, c context.Context) error {
 	appTmplYaml, _ := fileops.Read(path)
-	log := logagent.InstArch(c)
+	log := logagent.InstPlatform(c)
 	log.Printf("app config template content: \n%s", appTmplYaml)
 
 	prodConfigFileContent, uatConfigFileContent, sitConfigFileContent := generateConfigFileContent(appTmplYaml, c)
@@ -203,7 +203,7 @@ func generateConfigFile(path string, c context.Context) error {
 
 func GenerateConfigvVOld(c *gin.Context) {
 	srcPaths := c.Query("srcPaths")
-	log := logagent.InstArch(c)
+	log := logagent.InstPlatform(c)
 	log.Printf("the srcPaths are %s", srcPaths)
 
 	pathArray := strings.Split(srcPaths, ",")

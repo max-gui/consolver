@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"mime/multipart"
 	"net/http"
@@ -45,6 +46,11 @@ func SetupRouter() *gin.Engine {
 	r.GET("/conf/apply/:appname", generate4one)
 	r.GET("/conf/gen/:appname", generate4oneiac)
 	r.POST("/conf/gen/:appname", generate4oneiac)
+	r.POST("/conf/gen/:appname/:team/:version/:region", generate4iac)
+	r.GET("/conf/apply/:appname/:team/:envdc", getlist4one)
+	r.GET("/conf/apply/:appname/:team/:envdc/:region/:version/:fname", get4one)
+
+	r.GET("/conf/fetch/:entityType/:entityId/:env", getconf)
 
 	r.POST("/genall/:envs", gen4all)
 
@@ -70,6 +76,64 @@ func SetupRouter() *gin.Engine {
 func health(c *gin.Context) {
 	c.String(http.StatusOK, "online")
 }
+
+func getconf(c *gin.Context) {
+	entityType := c.Param("entityType")
+	entityId := c.Param("entityId")
+	env := c.Param("env")
+
+	confres := confgen.Getconfig(entityType, entityId, env, c)
+
+	common_resp(nil, "", confres, c)
+}
+
+func get4one(c *gin.Context) {
+	appname := c.Param("appname")
+	team := c.Param("team")
+	envdc := c.Param("envdc")
+	fname := c.Param("fname")
+	version := c.Param("version")
+	region := c.Param("region")
+
+	datastr := GetFromRepo(team, appname, envdc, version, region, fname, c)
+	err := error(nil)
+	httpstatus := http.StatusOK
+	if err != nil {
+		httpstatus = http.StatusInternalServerError
+		datastr = err.Error()
+	}
+	c.String(httpstatus, datastr)
+	// common_resp(nil, "", datastr, c)
+}
+
+func GetFromRepo(team, appname, envdc, version, region, fname string, c *gin.Context) string {
+
+	// repopath := "consolver/" + team + "/" + appname + "/" + envdc + "/" + fname
+	data := fileops.GetFromRepo(team, appname, envdc, version, region, fname, c)
+	return data
+}
+
+func getlist4one(c *gin.Context) {
+	appname := c.Param("appname")
+	team := c.Param("team")
+	envdc := c.Param("envdc")
+
+	confres := Getconfiglist(appname, team, envdc, c)
+
+	common_resp(nil, "", confres, c)
+}
+func Getconfiglist(appname, team, envdc string, c *gin.Context) []string {
+	appconfname := GetAppConfName(envdc)
+
+	confnamelist := []string{}
+	confnamelist = append(confnamelist, appconfname)
+	ConfNameHelper(envdc, constset.AppendSet, func(vtype, vid, confenv, filename string) {
+		confnamelist = append(confnamelist, filename)
+	})
+
+	return confnamelist
+}
+
 func generate4one(c *gin.Context) {
 	appname := c.Param("appname")
 	path := c.Query("path")
@@ -89,6 +153,44 @@ func generate4one(c *gin.Context) {
 	// })
 
 	common_resp(err, "", nil, c)
+	// if err == nil {
+	// 	c.JSON(200, gin.H{
+	// 		"message": "OK",
+	// 	})
+	// } else {
+	// 	c.JSON(200, gin.H{
+	// 		"message": err.Error(),
+	// 	})
+	// }
+}
+
+func generate4iac(c *gin.Context) {
+	appname := c.Param("appname")
+	team := c.Param("team")
+	version := c.Param("version")
+	region := c.Param("region")
+
+	envlist := []string{}
+	c.BindJSON(&envlist)
+	if len(envlist) < 1 {
+		envlist = constset.EnvSet
+	}
+	// confgen.ConvertWithCypher = cypher.Decryptbyhex2str
+	tags, err := GenerateappconfigRepo(appname, team, version, region, envlist, c)
+
+	// var httpstatus = http.StatusOK
+	// var errstr = ""
+	// if err != nil {
+	// 	httpstatus = http.StatusInternalServerError
+	// 	errstr = err.Error()
+	// }
+
+	// c.JSON(httpstatus, gin.H{
+	// 	// "data":  contents, //contents,
+	// 	"error": errstr,
+	// })
+
+	common_resp(err, "", tags, c)
 	// if err == nil {
 	// 	c.JSON(200, gin.H{
 	// 		"message": "OK",
@@ -194,7 +296,7 @@ func generate4all(c *gin.Context) {
 }
 
 func Generateallconfig(srcPaths string, c context.Context) error {
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	logger.Printf("the srcPaths are %s", srcPaths)
 
 	pathArray := strings.Split(srcPaths, ",")
@@ -204,7 +306,7 @@ func Generateallconfig(srcPaths string, c context.Context) error {
 }
 
 func GenerateappconfigRemotePath(appname, path string, c context.Context) error {
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	logger.Printf("the appname is %s", appname)
 	logger.Printf("the path is %s", path)
 
@@ -214,10 +316,21 @@ func GenerateappconfigRemotePath(appname, path string, c context.Context) error 
 
 func GenerateappconfigRemote(appname string, envlist []string, c context.Context) (map[string]map[string]string, error) {
 
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	logger.Printf("the appname is %s", appname)
 
+	// _, tags, err := writeAppConfig(appname, team, envlist, c)
 	_, tags, err := writeAppConfig(appname, envlist, c)
+	return tags, err
+}
+
+func GenerateappconfigRepo(appname, team, version, region string, envlist []string, c context.Context) (map[string]map[string]string, error) {
+
+	logger := logagent.InstPlatform(c)
+	logger.Printf("the appname is %s", appname)
+
+	// _, tags, err := writeAppConfig(appname, team, envlist, c)
+	_, tags, err := writeAppConfig4Repo(appname, team, version, region, envlist, c)
 	return tags, err
 }
 
@@ -261,6 +374,55 @@ func writeAppConfigPath(appname, path string, c context.Context) (map[string]int
 	return contents, err
 }
 
+func writeAppConfig4Repo(appname, team, version, region string, envdclist []string, c context.Context) (map[string]interface{}, map[string]map[string]string, error) {
+	var contents map[string]interface{}
+
+	var err error
+	var contentstr string
+
+	path := constset.Confpath + appname + string(os.PathSeparator)
+	// ioutil.
+	var f0 = func(appname string, content map[string]interface{}, tags map[string]map[string]string, envdc string, c context.Context) (map[string]interface{}, error) {
+		// if r, ok := content["af-arch"].(map[string]interface{})["resource"].(map[string]interface{}); ok {
+		// 	var resourceids []string
+		// 	for k := range r {
+		// 		if strings.Compare(k, "env") != 0 {
+		// 			resourceids = append(resourceids, k)
+		// 		}
+		// 	}
+		// 	if len(resourceids) != 0 {
+		// 		// env := r["env"].(string)
+
+		// 		// dbops.Update_appRes(appname, env, resourceids)
+		// 	}
+		// }
+
+		writeContent := convertops.ConvertStrMapToYaml(&content, c)
+		ConfNameHelper(envdc, constset.InsertSet, func(vtype, vid, confenv, filename string) {
+			result := confgen.GetOnlineConfig(vtype, vid, confenv, c)
+			writeContent = fmt.Sprintf("%s\n%s", writeContent, result)
+			tagInsert(vtype, vid, tags, envdc)
+
+			log.Print("writeContent is \n", writeContent)
+		})
+
+		contentstr, err = fileops.WriteToRepo(path, GetAppConfName(envdc), team, appname, writeContent, envdc, version, region, c)
+
+		// logger.Println(*constset.Filepaths)
+		//LogConfig/config
+		writeAppendConfigRepo(path, appname, team, tags, envdc, version, region, c)
+		// writeAppendConfigredis(path, tag, env, c)
+
+		writecontent := confgen.ConvertMap4Json(convertops.ConvertYamlToMap(contentstr, c), func(ciphertext string, Yek, Ecnon []byte, c context.Context) string { return ciphertext }, c)
+
+		return writecontent, err
+	}
+
+	contents, tags, err := confgen.GenerateAppConfigContentList(appname, envdclist, f0, c)
+
+	return contents, tags, err
+}
+
 func writeAppConfig(appname string, envlist []string, c context.Context) (map[string]interface{}, map[string]map[string]string, error) {
 	var contents map[string]interface{}
 
@@ -284,10 +446,11 @@ func writeAppConfig(appname string, envlist []string, c context.Context) (map[st
 		// 	}
 		// }
 
-		contentstr, err = fileops.WriteToAppPath(path, appname, content, env, c)
+		contentstr, err = fileops.WriteToAppPath(path, GetAppConfName(env), appname, content, env, c)
 
 		// logger.Println(*constset.Filepaths)
 		//LogConfig/config
+
 		writeAppendConfigredis(path, tag, env, c)
 
 		writecontent := confgen.ConvertMap4Json(convertops.ConvertYamlToMap(contentstr, c), func(ciphertext string, Yek, Ecnon []byte, c context.Context) string { return ciphertext }, c)
@@ -298,6 +461,12 @@ func writeAppConfig(appname string, envlist []string, c context.Context) (map[st
 	contents, tags, err := confgen.GenerateAppConfigContentList(appname, envlist, f0, c)
 
 	return contents, tags, err
+}
+
+func GetAppConfName(env string) string {
+	var filenamestr = "application-" + env + ".yml"
+
+	return filenamestr
 }
 
 // func writeAppConfigFileWith(appname, path string) (map[string]interface{}, error) {
@@ -339,7 +508,7 @@ func writeAppConfig(appname string, envlist []string, c context.Context) (map[st
 
 func GenerateallconfigRemote(srcPaths string, c context.Context) error {
 
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	logger.Printf("the srcPaths are %s", srcPaths)
 
 	pathArray := strings.Split(srcPaths, ",")
@@ -354,7 +523,7 @@ func writeConfigFile(pathArray []string, c context.Context) (map[string]interfac
 	var err error
 	var filecontent, path, contentstr string
 
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	var f0 = func(appname string, content map[string]interface{}, env string) (map[string]interface{}, error) {
 		if r, ok := content["af-arch"].(map[string]interface{})["resource"].(map[string]interface{}); ok {
 			var resourceids []string
@@ -370,7 +539,7 @@ func writeConfigFile(pathArray []string, c context.Context) (map[string]interfac
 			}
 		}
 
-		contentstr, err = fileops.WriteToPath(path, content, env, c)
+		contentstr, err = fileops.WriteToPath(path, GetAppConfName(env), content, env, c)
 
 		// logger.Println(*constset.Filepaths)
 		//LogConfig/config
@@ -403,7 +572,7 @@ func writeConfigFileWith(pathArray []string, c context.Context) (map[string]inte
 	var err error
 	var filecontent, path, contentstr string
 
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	var f0 = func(appname string, content map[string]interface{}, env string) (map[string]interface{}, error) {
 		if r, ok := content["af-arch"].(map[string]interface{})["resource"].(map[string]interface{}); ok {
 			var resourceids []string
@@ -419,7 +588,7 @@ func writeConfigFileWith(pathArray []string, c context.Context) (map[string]inte
 			}
 		}
 
-		contentstr, err = fileops.WriteToPath(path, content, env, c)
+		contentstr, err = fileops.WriteToPath(path, GetAppConfName(env), content, env, c)
 
 		// logger.Println(*constset.Filepaths)
 		//LogConfig/config
@@ -449,7 +618,7 @@ func writeConfigFileWith(pathArray []string, c context.Context) (map[string]inte
 func writeAppendConfigWith(appname, path, env string, c context.Context) {
 	rediscli := redisops.Pool().Get()
 
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	defer rediscli.Close()
 
 	lastIndex := strings.LastIndex(path, "/")
@@ -537,91 +706,142 @@ func writeAppendConfigWith(appname, path, env string, c context.Context) {
 	// }
 }
 
-func writeAppendConfig(path string, env string, c context.Context) {
-	var filename string
-	logger := logagent.InstArch(c)
+func writeAppendConfig(path string, envdc string, c context.Context) {
+	// var filename string
+	logger := logagent.InstPlatform(c)
 	lastIndex := strings.LastIndex(path, "/")
 	basepath := path[0:lastIndex]
-	for _, v := range constset.AppendSet {
-		// if v.Env == "" {
-		// 	envpara = env
-		// 	ss := strings.Split(v.Id, ".")
-
-		// 	if len(ss) > 1 {
-		// 		filename = ss[0] + "-" + env + "." + ss[1]
-		// 	} else {
-		// 		filename = v.Id
-		// 	}
-		// } else {
-		// 	envpara = v.Env
-		// 	filename = v.Id
-		// }
-		// filename = v.Id
-
-		// result := confgen.GetOnlineConfig(v.Type, v.Id, envpara)
-
-		if v.Withenv {
-			ss := strings.Split(v.Id, ".")
-			filename = ss[0] + "-" + env + "." + ss[1]
-		} else {
-			filename = v.Id
-		}
-		result := confgen.GetOnlineConfig(v.Type, v.Id, env, c)
+	ConfNameHelper(envdc, constset.AppendSet, func(vtype, vid, confenv, filename string) {
+		result := confgen.GetOnlineConfig(vtype, vid, envdc, c)
 		logger.Println(basepath + string(os.PathSeparator) + filename)
 		fileops.Writeover(basepath+string(os.PathSeparator)+filename, result, c)
-	}
+	})
+	// for _, v := range constset.AppendSet {
+	// 	// if v.Env == "" {
+	// 	// 	envpara = env
+	// 	// 	ss := strings.Split(v.Id, ".")
+
+	// 	// 	if len(ss) > 1 {
+	// 	// 		filename = ss[0] + "-" + env + "." + ss[1]
+	// 	// 	} else {
+	// 	// 		filename = v.Id
+	// 	// 	}
+	// 	// } else {
+	// 	// 	envpara = v.Env
+	// 	// 	filename = v.Id
+	// 	// }
+	// 	// filename = v.Id
+
+	// 	// result := confgen.GetOnlineConfig(v.Type, v.Id, envpara)
+
+	// 	if v.Withenv {
+	// 		ss := strings.Split(v.Id, ".")
+	// 		filename = ss[0] + "-" + env + "." + ss[1]
+	// 	} else {
+	// 		filename = v.Id
+	// 	}
+	// 	result := confgen.GetOnlineConfig(v.Type, v.Id, env, c)
+	// 	logger.Println(basepath + string(os.PathSeparator) + filename)
+	// 	fileops.Writeover(basepath+string(os.PathSeparator)+filename, result, c)
+	// }
 }
 
-func writeAppendConfigredis(path string, tags map[string]map[string]string, env string, c context.Context) {
+func writeAppendConfigRepo(path, appname, team string, tags map[string]map[string]string, envdc, version, region string, c context.Context) {
 
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	rediscli := redisops.Pool().Get()
 
 	defer rediscli.Close()
 
-	var filename string
+	// var filename string
 	lastIndex := strings.LastIndex(path, "/")
 	basepath := path[0:lastIndex]
-	for _, v := range constset.AppendSet {
-		// if v.Env == "" {
-		// 	envpara = env
-		// 	ss := strings.Split(v.Id, ".")
 
-		// 	if len(ss) > 1 {
-		// 		filename = ss[0] + "-" + env + "." + ss[1]
-		// 	} else {
-		// 		filename = v.Id
-		// 	}
-		// } else {
-		// 	envpara = v.Env
-		// 	filename = v.Id
-		// }
-		// filename = v.Id
+	ConfNameHelper(envdc, constset.AppendSet, func(vtype, vid, confenv, filename string) {
+		result := confgen.GetOnlineConfig(vtype, vid, confenv, c)
+		tagInsert(vtype, vid, tags, envdc)
 
-		// result := confgen.GetOnlineConfig(v.Type, v.Id, envpara)
-		var result string
-		if v.Withenv {
-			ss := strings.Split(v.Id, ".")
-			filename = ss[0] + "-" + env + "." + ss[1]
-			result = confgen.GetOnlineConfig(v.Type, v.Id, env, c)
-		} else {
-			filename = v.Id
-			result = confgen.GetOnlineConfig(v.Type, v.Id, "prod", c)
+		logger.Println(basepath + string(os.PathSeparator) + filename)
+		//FIXME: write append to nexus repo
+		fileops.WriteToNexus(result, filename, team, appname, envdc, version, region, c)
+		_, err := rediscli.Do("HSET", "confsolver-append", filename, result)
+		rediscli.Do("EXPIRE", "confsolver-append", 60*10)
+		if err != nil {
+			logger.Panic(err)
 		}
-		// result := confgen.GetOnlineConfig(v.Type, v.Id, env, c)
+	})
+	// for _, v := range constset.AppendSet {
+	// 	// if v.Env == "" {
+	// 	// 	envpara = env
+	// 	// 	ss := strings.Split(v.Id, ".")
 
-		tagkey := v.Type + "_" + v.Id // + "_" + env
-		if _, ok := tags[env]; ok {
-			tags[env][tagkey] = v.Id
-		} else {
-			tags[env] = map[string]string{tagkey: v.Id}
-		}
-		// tags[tagkey] = v.Id
-		// if val, ok := tags[tagkey]; ok {
-		// 	tags[tagkey] =  v.Id
-		// } else {
-		// 	tags[tagkey] = env + v.Id
-		// }
+	// 	// 	if len(ss) > 1 {
+	// 	// 		filename = ss[0] + "-" + env + "." + ss[1]
+	// 	// 	} else {
+	// 	// 		filename = v.Id
+	// 	// 	}
+	// 	// } else {
+	// 	// 	envpara = v.Env
+	// 	// 	filename = v.Id
+	// 	// }
+	// 	// filename = v.Id
+
+	// 	// result := confgen.GetOnlineConfig(v.Type, v.Id, envpara)
+	// 	var result string
+	// 	if v.Withenv {
+	// 		ss := strings.Split(v.Id, ".")
+	// 		filename = ss[0] + "-" + env + "." + ss[1]
+	// 		result = confgen.GetOnlineConfig(v.Type, v.Id, env, c)
+	// 	} else {
+	// 		filename = v.Id
+	// 		result = confgen.GetOnlineConfig(v.Type, v.Id, "prod", c)
+	// 	}
+	// 	// result := confgen.GetOnlineConfig(v.Type, v.Id, env, c)
+
+	// 	// + "_" + env
+	// 	tagInsert(v.Type, v.Id, tags, env)
+	// 	// tags[tagkey] = v.Id
+	// 	// if val, ok := tags[tagkey]; ok {
+	// 	// 	tags[tagkey] =  v.Id
+	// 	// } else {
+	// 	// 	tags[tagkey] = env + v.Id
+	// 	// }
+
+	// 	logger.Println(basepath + string(os.PathSeparator) + filename)
+	// 	//FIXME: write append to nexus repo
+	// 	fileops.WriteToNexus(result, filename, team, appname)
+	// 	_, err := rediscli.Do("HSET", "confsolver-append", filename, result)
+	// 	rediscli.Do("EXPIRE", "confsolver-append", 60*10)
+	// 	if err != nil {
+	// 		logger.Panic(err)
+	// 	}
+	// 	// fileops.Writeover(basepath+string(os.PathSeparator)+filename, result)
+	// }
+}
+
+func tagInsert(vtype, vid string, tags map[string]map[string]string, env string) {
+	tagkey := vtype + "_" + vid
+	if _, ok := tags[env]; ok {
+		tags[env][tagkey] = vid
+	} else {
+		tags[env] = map[string]string{tagkey: vid}
+	}
+}
+
+func writeAppendConfigredis(path string, tags map[string]map[string]string, envdc string, c context.Context) {
+
+	logger := logagent.InstPlatform(c)
+	rediscli := redisops.Pool().Get()
+
+	defer rediscli.Close()
+
+	// var filename string
+	lastIndex := strings.LastIndex(path, "/")
+	basepath := path[0:lastIndex]
+
+	ConfNameHelper(envdc, constset.AppendSet, func(vtype, vid, confenv, filename string) {
+		result := confgen.GetOnlineConfig(vtype, vid, confenv, c)
+		tagInsert(vtype, vid, tags, envdc)
 
 		logger.Println(basepath + string(os.PathSeparator) + filename)
 		_, err := rediscli.Do("HSET", "confsolver-append", filename, result)
@@ -629,14 +849,98 @@ func writeAppendConfigredis(path string, tags map[string]map[string]string, env 
 		if err != nil {
 			logger.Panic(err)
 		}
-		// fileops.Writeover(basepath+string(os.PathSeparator)+filename, result)
+	})
+	// for _, v := range constset.AppendSet {
+	// 	// if v.Env == "" {
+	// 	// 	envpara = env
+	// 	// 	ss := strings.Split(v.Id, ".")
+
+	// 	// 	if len(ss) > 1 {
+	// 	// 		filename = ss[0] + "-" + env + "." + ss[1]
+	// 	// 	} else {
+	// 	// 		filename = v.Id
+	// 	// 	}
+	// 	// } else {
+	// 	// 	envpara = v.Env
+	// 	// 	filename = v.Id
+	// 	// }
+	// 	// filename = v.Id
+
+	// 	// result := confgen.GetOnlineConfig(v.Type, v.Id, envpara)
+	// 	var result string
+	// 	if v.Withenv {
+	// 		ss := strings.Split(v.Id, ".")
+	// 		filename = ss[0] + "-" + env + "." + ss[1]
+	// 		result = confgen.GetOnlineConfig(v.Type, v.Id, env, c)
+	// 	} else {
+	// 		filename = v.Id
+	// 		result = confgen.GetOnlineConfig(v.Type, v.Id, "prod", c)
+	// 	}
+	// 	// result := confgen.GetOnlineConfig(v.Type, v.Id, env, c)
+
+	// 	tagkey := v.Type + "_" + v.Id // + "_" + env
+	// 	if _, ok := tags[env]; ok {
+	// 		tags[env][tagkey] = v.Id
+	// 	} else {
+	// 		tags[env] = map[string]string{tagkey: v.Id}
+	// 	}
+	// 	// tags[tagkey] = v.Id
+	// 	// if val, ok := tags[tagkey]; ok {
+	// 	// 	tags[tagkey] =  v.Id
+	// 	// } else {
+	// 	// 	tags[tagkey] = env + v.Id
+	// 	// }
+
+	// 	logger.Println(basepath + string(os.PathSeparator) + filename)
+	// 	_, err := rediscli.Do("HSET", "confsolver-append", filename, result)
+	// 	rediscli.Do("EXPIRE", "confsolver-append", 60*10)
+	// 	if err != nil {
+	// 		logger.Panic(err)
+	// 	}
+	// 	// fileops.Writeover(basepath+string(os.PathSeparator)+filename, result)
+	// }
+}
+
+func ConfNameHelper(envdc string, appendset []constset.AppendStruct, processor func(string, string, string, string)) {
+	var filename string
+	for _, v := range appendset {
+		// if v.Env == "" {
+		// 	envpara = env
+		// 	ss := strings.Split(v.Id, ".")
+
+		// 	if len(ss) > 1 {
+		// 		filename = ss[0] + "-" + env + "." + ss[1]
+		// 	} else {
+		// 		filename = v.Id
+		// 	}
+		// } else {
+		// 	envpara = v.Env
+		// 	filename = v.Id
+		// }
+		// filename = v.Id
+
+		// result := confgen.GetOnlineConfig(v.Type, v.Id, envpara)
+
+		var confenv string
+		if v.Withenv {
+			ss := strings.Split(v.Id, ".")
+			filename = ss[0] + "-" + envdc + "." + ss[1]
+			confenv = envdc
+			// result = confgen.GetOnlineConfig(v.Type, v.Id, env, c)
+		} else {
+			filename = v.Id
+			confenv = "prod"
+			// result = confgen.GetOnlineConfig(v.Type, v.Id, "prod", c)
+		}
+		processor(v.Type, v.Id, confenv, filename)
 	}
+
 }
 
 func gen4all(c *gin.Context) {
 	envs := c.Query("envs")
 
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	logger.Printf("the envs are %s", envs)
 
 	envarray := strings.Split(envs, ",")
@@ -663,7 +967,7 @@ func gen4all(c *gin.Context) {
 
 func Get4all(c *gin.Context) {
 
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	file, head, _ := c.Request.FormFile("file")
 	logger.Println(head.Filename)
 
@@ -713,7 +1017,7 @@ func Get4env(c *gin.Context) {
 	target_env := c.Param("env")
 	file, head, _ := c.Request.FormFile("file")
 
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	logger.Println(head.Filename)
 
 	content, err := fileops.ReadFrom(file, c)
@@ -739,7 +1043,7 @@ func fileTokenOnline(c *gin.Context) {
 	json := make(map[string]string) //注意该结构接受的内容
 	c.ShouldBindJSON(&json)
 
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	logger.Println(json)
 
 	resStr := cypher.Md5str(json["data"])
@@ -753,7 +1057,7 @@ func fileTokenOnline(c *gin.Context) {
 func Encrypt2Hexonline(c *gin.Context) {
 	json := make(map[string]string) //注意该结构接受的内容
 	c.ShouldBindJSON(&json)
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	logger.Println(json)
 
 	resStr := cypher.EncryptStr2hex(json["data"], constset.Yek, constset.Ecnon, c)
@@ -767,7 +1071,7 @@ func Encrypt2Hexonline(c *gin.Context) {
 func DecryptHexonline(c *gin.Context) {
 	json := make(map[string]string) //注意该结构接受的内容
 	c.ShouldBindJSON(&json)
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	logger.Println(json)
 
 	resbytes := cypher.Decryptbyhex(json["data"], constset.Yek, constset.Ecnon, c)
@@ -804,7 +1108,7 @@ func EncryptConfig2Hexonline(c *gin.Context) {
 	var err error
 	var file multipart.File
 	var head *multipart.FileHeader
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	if file, head, err = c.Request.FormFile("file"); err == nil {
 		logger.Println(err)
 		logger.Println(file)
@@ -876,7 +1180,7 @@ func DecryptHexConfigOnline(c *gin.Context) {
 	var err error
 	var file multipart.File
 	var head *multipart.FileHeader
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	if file, head, err = c.Request.FormFile("file"); err == nil {
 		logger.Println(err)
 		logger.Println(file)

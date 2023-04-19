@@ -21,7 +21,7 @@ func main() {
 	bytes := confload.Load(c)
 	constset.StartupInit(bytes, c)
 
-	logger := logagent.InstArch(c)
+	logger := logagent.InstPlatform(c)
 	logger.Print(*consulsets.Acltoken)
 
 	go consulhelp.StartWatch(*constset.ConfWatchPrefix, true, c)

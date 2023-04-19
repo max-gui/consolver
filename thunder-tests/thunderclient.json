@@ -37,5 +37,91 @@
       }
     ],
     "tests": []
+  },
+  {
+    "_id": "9cd0d220-5c27-4ad4-853c-d5bdfccad91b",
+    "colId": "00194277-90c1-422d-895f-66e0e1347a1f",
+    "containerId": "",
+    "name": "generate4one",
+    "url": "http://127.0.0.1:8181/conf/apply/af-affe-security-gateway?path=ddd/a.yaml",
+    "method": "GET",
+    "sortNum": 40000,
+    "created": "2023-04-19T04:08:33.141Z",
+    "modified": "2023-04-19T04:08:33.141Z",
+    "headers": [],
+    "params": [
+      {
+        "name": "path",
+        "value": "ddd/a.yaml",
+        "isPath": false
+      }
+    ],
+    "tests": []
+  },
+  {
+    "_id": "673a3ca3-df38-4110-af3f-b87abbd75fb2",
+    "colId": "00194277-90c1-422d-895f-66e0e1347a1f",
+    "containerId": "",
+    "name": "generate4iac",
+    "url": "http://127.0.0.1:8181/conf/gen/fls-aflm-fund-aggregation/arch/20130708/default",
+    "method": "POST",
+    "sortNum": 50000,
+    "created": "2023-04-19T04:09:57.970Z",
+    "modified": "2023-04-19T04:52:44.529Z",
+    "headers": [],
+    "params": [],
+    "body": {
+      "type": "json",
+      "raw": "[\"testLFB\",\"prodLFB\"]",
+      "form": []
+    },
+    "tests": []
+  },
+  {
+    "_id": "e3fbf903-d749-4bca-8bc5-25499bf1f643",
+    "colId": "00194277-90c1-422d-895f-66e0e1347a1f",
+    "containerId": "",
+    "name": "getlist4one",
+    "url": "http://127.0.0.1:8181/conf/apply/fls-aflm-fund-aggregation/arch/testLFB",
+    "method": "GET",
+    "sortNum": 60000,
+    "created": "2023-04-19T04:11:40.840Z",
+    "modified": "2023-04-19T04:18:41.325Z",
+    "headers": [],
+    "params": [],
+    "tests": []
+  },
+  {
+    "_id": "02468837-9f7d-431d-80ac-4befbaec7c2c",
+    "colId": "00194277-90c1-422d-895f-66e0e1347a1f",
+    "containerId": "",
+    "name": "get4one",
+    "url": "http://127.0.0.1:8181/conf/apply/fls-aflm-fund-aggregation/arch/testLFB/default/20130708/application-testLFB.yml",
+    "method": "GET",
+    "sortNum": 70000,
+    "created": "2023-04-19T04:17:02.081Z",
+    "modified": "2023-04-19T04:17:02.081Z",
+    "headers": [],
+    "params": [],
+    "tests": []
+  },
+  {
+    "_id": "a82c9c3f-6719-494b-8488-3e24b7932620",
+    "colId": "00194277-90c1-422d-895f-66e0e1347a1f",
+    "containerId": "",
+    "name": "generate4oneiac",
+    "url": "http://127.0.0.1:8181/conf/gen/af-affe-security-gateway",
+    "method": "POST",
+    "sortNum": 45000,
+    "created": "2023-04-19T04:19:05.375Z",
+    "modified": "2023-04-19T04:20:33.245Z",
+    "headers": [],
+    "params": [],
+    "body": {
+      "type": "json",
+      "raw": "[\"testLFB\",\"prodLFB\"]",
+      "form": []
+    },
+    "tests": []
   }
 ]

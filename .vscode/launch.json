@@ -16,7 +16,7 @@
                 "-port=8181",
                 "-consulhost=http://consul-prod.paic.com.cn",
                 "-appdcenv=test",
-                "-appendset=bootload:bootstrap.yml:true,LogConfig:logback-spring.xml:false,configCheck:configCheck.yml:false"
+                "-appendset=LogConfig:logback-spring.xml:false,configCheck:configCheck.yml:false"
             ]
         },
         {
